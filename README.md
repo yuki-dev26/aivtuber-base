@@ -33,12 +33,12 @@ aivtuber-base/
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
-- [AivisSpeech Engine](https://aivis-project.com/) をローカル起動（`http://127.0.0.1:10101`）
+- [AivisSpeech](https://aivis-project.com/)
 - OpenAI API キー：<https://note.com/yuki_tech/n/nbc29be8da07f/>
 - YouTube Data API v3 API キー：<https://note.com/yuki_tech/n/na82ad826df1f/>
 - 配信中の YouTube Live ID（URL の `v=` 以降）
-- 出力デバイス（VB-CABLE など仮想オーディオデバイス推奨）
-- 任意: [Diffmotion](https://diffmotion.app/) がローカル起動（`http://localhost:37264`）していると感情連動プリセット切替が動く
+- 出力デバイス（[VB-CABLE](https://vb-audio.com/Cable/) など仮想オーディオデバイス推奨）
+- 任意: [DiffMotion](https://yuki-p.booth.pm/items/7913743) がローカル起動（`http://localhost:37264`）していると感情連動プリセット切替が動く
 
 ## セットアップ
 
@@ -64,7 +64,7 @@ CABLE_DEVICE_NAME="CABLE Input"
 
 ## 起動
 
-AivisSpeech Engine を起動した上で:
+AivisSpeech を起動した上で:
 
 ```bash
 uv run python main.py

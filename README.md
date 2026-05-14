@@ -1,6 +1,6 @@
 # aivtuber-base
 
-<img src="https://skillicons.dev/icons?i=py&perline=8" />
+<img src="https://skillicons.dev/icons?i=py,fastapi&perline=8" />
 
 YouTube Live のコメントを拾って OpenAI で応答を生成し、AivisSpeech で音声合成して出力する、AIVTuberシステムの最小構成。
 本システムをベースに機能追加や改修などの独自カスタマイズを推奨します。
@@ -77,7 +77,7 @@ uv run python main.py
 `config/character.md` がそのままシステムプロンプト(キャラクター設定)として読み込まれる。
 感情タグは `<<感情名>>` 形式で応答先頭に付与される想定:
 
-```
+```text
 <<嬉しい>>わぁ、コメントありがとう！うれしいな〜
 ```
 

@@ -1,71 +1,60 @@
+import logging
 import os
-import re
-import time
-from typing import Optional, Tuple
+import threading
+from contextlib import asynccontextmanager
+from typing import Optional
 
-from dotenv import load_dotenv
+import uvicorn
+from fastapi import FastAPI
 
-from components.aivisspeech import Aivis
-from components.diffmotion import check_available as check_diffmotion
-from components.diffmotion import switch_preset
-from components.openai import OpenAI
-from components.play_sound import PlaySound
-from components.youtube_comments import YouTubeComments
+from aivtuber import run_aivtuber, stop_aivtuber
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-EMOTION_TAG_PATTERN = re.compile(r"^\s*<<([^<>]+)>>\s*")
+_runner_thread: Optional[threading.Thread] = None
 
 
-def split_emotion(response: str) -> Tuple[Optional[str], str]:
-    match = EMOTION_TAG_PATTERN.match(response)
-    if not match:
-        return None, response.strip()
-    emotion = match.group(1).strip()
-    body = EMOTION_TAG_PATTERN.sub("", response, count=1).strip()
-    return emotion, body
-
-
-def main() -> None:
-    video_id = os.getenv("YOUTUBE_VIDEO_ID", "")
-    if not video_id:
-        raise SystemExit("YOUTUBE_VIDEO_ID が未設定です。")
-
-    comments = YouTubeComments(video_id=video_id)
-    openai_client = OpenAI()
-    aivis = Aivis()
-    player = PlaySound()
-    check_diffmotion()
-
-    print("\033[36mAIVTuberを起動しました。YouTubeコメントを待機中...\033[0m")
-
+def _run_aivtuber_in_thread(stop_event: threading.Event) -> None:
     try:
-        for comment in comments.stream(default_poll_interval=3.0):
-            print(f"\033[33m[{comment.author}] {comment.message}\033[0m")
+        run_aivtuber(stop_event=stop_event)
+    except Exception:
+        logger.exception("aivtuber loop failed")
 
-            question = f"{comment.author}さんからのコメント: {comment.message}"
-            response = openai_client.create_chat(question)
-            if not response:
-                continue
 
-            emotion, body = split_emotion(response)
-            if emotion:
-                print(f"\033[35m感情: {emotion}\033[0m")
-                switch_preset(emotion)
-            if not body:
-                continue
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    global _runner_thread
 
-            print(f"\033[32m応答: {body}\033[0m")
+    if not os.getenv("YOUTUBE_VIDEO_ID", ""):
+        raise RuntimeError("YOUTUBE_VIDEO_ID が未設定です。")
 
-            data, rate = aivis.get_voice(body)
-            player.play_sound(data, rate)
+    runner_stop = threading.Event()
+    _runner_thread = threading.Thread(
+        target=_run_aivtuber_in_thread,
+        args=(runner_stop,),
+        daemon=False,
+        name="aivtuber-loop",
+    )
+    _runner_thread.start()
+    yield
+    runner_stop.set()
+    stop_aivtuber()
+    if _runner_thread is not None:
+        _runner_thread.join(timeout=60.0)
 
-            time.sleep(0.2)
-    except KeyboardInterrupt:
-        print("\n\033[36m停止します。\033[0m")
-    finally:
-        comments.terminate()
+
+app = FastAPI(title="aivtuber-base", lifespan=lifespan)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run(
+        "main:app",
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=False,
+    )
